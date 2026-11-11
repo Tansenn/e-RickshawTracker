@@ -10269,7 +10269,20 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   :root[data-theme="dark"] .text-emerald-700, :root[data-theme="dark"] .text-emerald-600 { color:#34d399 !important; }
   :root[data-theme="dark"] .text-red-500 { color:#f87171 !important; }
   :root[data-theme="dark"] .text-amber-600 { color:#fbbf24 !important; }
-  .qrbox { background:#ffffff !important; }
+  .qrbox {
+  position:relative; background:#ffffff !important;
+  border:4px solid transparent !important; border-radius:1rem !important;
+  background-image: linear-gradient(#fff,#fff), repeating-conic-gradient(from 0deg, var(--bd-green) 0deg 22.5deg, #f0b429 22.5deg 45deg, var(--bd-red) 45deg 67.5deg, #f0b429 67.5deg 90deg);
+  background-origin: border-box; background-clip: padding-box, border-box;
+  box-shadow:0 6px 18px rgba(0,106,78,.2);
+}
+.qr-badge {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:28%; aspect-ratio:1; border-radius:50%; background:#fff;
+  border:3px solid var(--bd-red); box-shadow:0 2px 8px rgba(0,0,0,.3);
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+.qr-badge img { width:80%; height:80%; object-fit:contain; }
   .rolecard { background:var(--panel-bg); border:1px solid var(--border); border-radius:1rem; padding:1.25rem 1.4rem; text-align:left; transition:.18s; display:flex; gap:1rem; align-items:center; width:100%; }
   .rolecard:hover { border-color:var(--emerald); transform:translateY(-2px); }
   .opt-card { background:var(--panel-bg); border:1.5px solid var(--border); border-radius:1.1rem; padding:1.5rem; text-align:left; transition:.18s; display:flex; gap:1rem; align-items:center; width:100%; }
@@ -11081,7 +11094,8 @@ function renderOb(){
   const img = document.getElementById('obImg'), qbox = document.getElementById('obQr');
   if (s.qr && typeof QRCode !== 'undefined') {
     img.classList.add('hidden'); qbox.classList.remove('hidden'); qbox.innerHTML = '';
-    new QRCode(qbox, { text:qrPayload(state.vehicles[0]), width:112, height:112, correctLevel:QRCode.CorrectLevel.M });
+    new QRCode(qbox, { text:qrPayload(state.vehicles[0]), width:112, height:112, colorDark:'#006a4e', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.H });
+qbox.insertAdjacentHTML('beforeend', `<div class="qr-badge"><img src="${AS('cartoon')}" alt=""></div>`);
   } else {
     qbox.classList.add('hidden'); img.classList.remove('hidden'); img.src = s.img;
   }
@@ -11419,6 +11433,12 @@ function exportVehicleCsv(reg){
 }
 
 /* ================= VEHICLE PROFILE ================= */
+const CITY_CORP_ZONE = { 'Uttara':'north', 'Mirpur':'north', 'Gulshan/Banani':'north', 'Dhanmondi':'south', 'Motijheel':'south', 'Old Dhaka':'south' };
+function cityCorpLine(v){
+  const corp = CITY_CORP_ZONE[v.zone] || 'south';
+  if (lang === 'bn') return corp === 'north' ? 'ঢাকা উত্তর সিটি কর্পোরেশন কর্তৃক নিবন্ধিত ই-অটোরিকশা' : 'ঢাকা দক্ষিণ সিটি কর্পোরেশন কর্তৃক নিবন্ধিত ই-অটোরিকশা';
+  return corp === 'north' ? 'Dhaka North City Corporation Registered E-Autorickshaw' : 'Dhaka South City Corporation Registered E-Autorickshaw';
+}
 function openProfile(reg){
   const v = state.vehicles.find(x => x.reg === reg); if (!v) { toast(reg + ' — ' + (lang==='bn'?'পাওয়া যায়নি':'not found'), 'alert'); return; }
   currentProfile = reg;
@@ -11459,17 +11479,12 @@ function openProfile(reg){
         </div>
       </div>
       <div class="lg:col-span-2 space-y-4">
-        <div class="panel p-6 flex items-center gap-6 flex-wrap">
-          <div class="qrbox border border-gray-200 rounded-xl p-3" id="profQr"></div>
-          <div class="flex-1 min-w-[220px]">
-            <div class="font-bold mb-1">${t('scanToVerify')}</div>
-            <div class="text-sm text-gray-500 mb-3">${t('fineSummary')}: <b>${fines.length}</b> · ${t('totalFined')}: <b>${tk(total)}</b> · ${t('unpaid')}: <b class="text-amber-600">${tk(unpaid)}</b>${overdueCnt ? ` · <span class="chip chip-red">${overdueCnt} ${t('defaulter')}</span>` : ''}</div>
-            <div class="text-xs text-gray-400 mb-3">${t('qrHint')}</div>
-            <div class="flex gap-2 flex-wrap">
-              <button onclick="exportVehicleCsv('${v.reg}')" class="btn text-sm">⬇ ${t('exportCsv')}</button>
-              <button onclick="copyVehicleLink('${v.reg}')" class="btn-ghost text-sm">🔗 ${HOSTED ? t('shareLink') : t('copyQrText')}</button>
-              <button onclick="window.print()" class="btn-ghost text-sm">🖨 ${t('printCard')}</button>
-            </div>
+        <div class="panel p-8 flex flex-col items-center text-center gap-4">
+          <div class="font-bold text-lg leading-snug max-w-xs">${cityCorpLine(v)}</div>
+          <div class="qrbox border border-gray-200 rounded-xl p-4" id="profQr"></div>
+          <div>
+            <div class="font-extrabold text-xl">${esc(v.owner)}</div>
+            <div class="font-mono text-gray-500 tracking-wide">${v.reg}</div>
           </div>
         </div>
         <div class="panel p-6">
@@ -11484,7 +11499,10 @@ function openProfile(reg){
   document.querySelectorAll('.view').forEach(vv => vv.classList.add('hidden'));
   document.getElementById('view-profile').classList.remove('hidden');
   const box = document.getElementById('profQr'); box.innerHTML = '';
-  if (typeof QRCode !== 'undefined') new QRCode(box, { text: qrPayload(v), width: 170, height: 170, correctLevel: QRCode.CorrectLevel.M });
+  if (typeof QRCode !== 'undefined') {
+  new QRCode(box, { text: qrPayload(v), width: 240, height: 240, colorDark:'#006a4e', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.H });
+  box.insertAdjacentHTML('beforeend', `<div class="qr-badge"><img src="${AS('cartoon')}" alt=""></div>`);
+}
 }
 function closeProfile(){
   try {
@@ -11796,7 +11814,7 @@ function runOCR(){ runSampleOcr(); }
 /* ---------- AI OCR (Google Gemini — Bangla + English, printed or handwritten) ---------- */
 const AI_DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 /* Demo key baked into this copy so AI works out of the box. Rotate it after the demo. */
-const AI_DEFAULT_KEY = 'AQ.Ab8RN6KGbYODMPIyuc3-jowO4IsCvGpak9Uxri0BGGVz9IbQ7A';
+const AI_DEFAULT_KEY = 'AQ.Ab8RN6LW_LysSPS7GOma9k9QbyJ5VMs5voYsHe-e_R377iOqAA';
 const AI_PROMPT = [
   'You read Bangladeshi rickshaw registration forms. The photo may be printed or handwritten, in Bangla or English.',
   'Return ONLY a JSON object with these string keys, using "" when a value is not visible:',
