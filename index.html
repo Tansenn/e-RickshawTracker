@@ -10617,9 +10617,12 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
               <canvas id="paperCanvas" class="hidden rounded-lg" style="max-height:16rem;"></canvas>
               <div id="ocrScanline" class="hidden absolute left-0 right-0 h-0.5 bg-emerald-500 scanline" style="box-shadow:0 0 18px #10b981;"></div>
             </div>
+            <div id="paperPagesStrip" class="hidden flex gap-2 mt-2"></div>
+            <button type="button" onclick="startScan()" id="startScanBtn" class="btn w-full mt-2 hidden">🔎 Start Scan</button>
             <div id="ocrStatus" class="text-xs mt-3 text-gray-400" data-i18n="ocrIdle">Take a photo of the filled form, or try the sample form.</div>
             <input type="file" id="paperCamera" accept="image/*" capture="environment" class="hidden">
-            <input type="file" id="paperFile" accept="image/*" class="hidden">
+            <input type="file" id="paperFile" accept="image/*" multiple class="hidden">
+            <input type="file" id="paperAddOne" accept="image/*" class="hidden">
             <div class="grid grid-cols-2 gap-2 mt-4">
               <button onclick="document.getElementById('paperCamera').click()" class="btn">📷 <span data-i18n="ocrCamera">Scan with camera</span></button>
               <button onclick="document.getElementById('paperFile').click()" class="btn-ghost">🖼 <span data-i18n="ocrGallery">Choose from gallery</span></button>
@@ -11868,9 +11871,55 @@ async function runSampleOcr(){
   const blob = await new Promise(res => c.toBlob(b => res(b), 'image/png'));
   readPaper(blob);
 }
-function onPaperPick(e){
+let paperBlobs = []; // up to 2 images sent together to the AI
+function renderPaperThumbs(){
+  const strip = document.getElementById('paperPagesStrip');
+  if (!strip) return;
+  if (!paperBlobs.length) {
+    strip.classList.add('hidden'); strip.innerHTML = '';
+    document.getElementById('startScanBtn')?.classList.add('hidden');
+    return;
+  }
+  const thumbs = paperBlobs.map((f, i) => {
+    const url = URL.createObjectURL(f);
+    return `<div class="relative">
+      <img src="${url}" class="h-16 w-16 object-cover rounded border-2 border-emerald-500">
+      <span class="absolute -top-2 -left-2 bg-emerald-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">${i + 1}</span>
+      <button type="button" onclick="removePaperBlob(${i})" class="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center leading-none">✕</button>
+    </div>`;
+  }).join('');
+  const addSlot = paperBlobs.length < 2
+    ? `<button type="button" onclick="document.getElementById('paperAddOne').click()" class="h-16 w-16 rounded border-2 border-dashed border-gray-400 flex items-center justify-center text-2xl text-gray-400">+</button>`
+    : '';
+  strip.innerHTML = thumbs + addSlot;
+  strip.classList.remove('hidden');
+  document.getElementById('startScanBtn')?.classList.toggle('hidden', paperBlobs.length === 0);
+}
+function removePaperBlob(i){
+  paperBlobs.splice(i, 1);
+  renderPaperThumbs();
+  if (paperBlobs.length) {
+    drawPaperPreview(paperBlobs[paperBlobs.length - 1]);
+  } else {
+    document.getElementById('paperCanvas')?.classList.add('hidden');
+    document.getElementById('paperPreview')?.classList.remove('hidden');
+  }
+}
+function addPaperBlob(f){
+  if (paperBlobs.length >= 2) paperBlobs = [];
+  paperBlobs.push(f);
+  drawPaperPreview(paperBlobs[paperBlobs.length - 1]);
+  renderPaperThumbs();
+}
+function onAddOnePick(e){
   const f = e.target.files[0]; e.target.value = '';
-  if (!f) return;
+  if (!f || paperBlobs.length >= 2) return;
+  paperBlobs.push(f);
+  drawPaperPreview(f);
+  renderPaperThumbs();
+  setOcrStatus('🖼 ' + paperBlobs.length + ' page(s) added — press Start Scan when ready');
+}
+function drawPaperPreview(f){
   const prev = document.getElementById('paperPreview');
   const c = document.getElementById('paperCanvas');
   const url = URL.createObjectURL(f);
@@ -11883,10 +11932,29 @@ function onPaperPick(e){
     c.classList.remove('hidden'); URL.revokeObjectURL(url);
   };
   img.src = url;
-  readPaper(f);
 }
-document.getElementById('paperCamera')?.addEventListener('change', onPaperPick);
-document.getElementById('paperFile')?.addEventListener('change', onPaperPick);
+function startScan(){
+  if (!paperBlobs.length) { toast('Add at least one photo first', 'warn'); return; }
+  readPaper(paperBlobs.slice());
+}
+function onCameraPick(e){
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  addPaperBlob(f);
+  setOcrStatus(paperBlobs.length === 1 ? '📷 Page 1 added — tap camera again for page 2, or press Start Scan' : '📷 Page 2 added — press Start Scan when ready');
+}
+function onGalleryPick(e){
+  const files = Array.from(e.target.files || []).slice(0, 2);
+  e.target.value = '';
+  if (!files.length) return;
+  paperBlobs = files;
+  drawPaperPreview(files[files.length - 1]);
+  renderPaperThumbs();
+  setOcrStatus('🖼 ' + paperBlobs.length + ' page(s) added — press Start Scan when ready');
+}
+document.getElementById('paperCamera')?.addEventListener('change', onCameraPick);
+document.getElementById('paperFile')?.addEventListener('change', onGalleryPick);
+document.getElementById('paperAddOne')?.addEventListener('change', onAddOnePick);
 function runOCR(){ runSampleOcr(); }
 
 /* ---------- AI OCR (Google Gemini — Bangla + English, printed or handwritten) ---------- */
@@ -11990,16 +12058,23 @@ function aiToParsed(o){
   out.zone = pick('zone');
   return out;
 }
-async function aiReadForm(blob){
+async function aiReadForm(blobs){
   if (!aiAvailable()) throw new Error('aiNeedKey');
+  const list = Array.isArray(blobs) ? blobs : [blobs];
   const userKey = aiKey();
   /* With a user-supplied key, call Google directly. With no user key (built-in mode),
      route through the Worker proxy, which attaches the real key server-side —
      no key is ever sent from this page in that case. */
   const base = userKey ? 'https://generativelanguage.googleapis.com' : AI_WORKER_URL;
-  const { base64, mime } = await fileToBase64(blob);
+  const images = await Promise.all(list.map(b => fileToBase64(b)));
+  const promptText = AI_PROMPT + (images.length > 1
+    ? ' These are two photos of the same registration (e.g. front and back, or two pages) — combine information found across both into one answer.'
+    : '');
   const payload = {
-    contents: [{ parts: [ { text: AI_PROMPT }, { inline_data: { mime_type: mime, data: base64 } } ] }],
+    contents: [{ parts: [
+      { text: promptText },
+      ...images.map(({ base64, mime }) => ({ inline_data: { mime_type: mime, data: base64 } })),
+    ] }],
     generationConfig: { temperature: 0, maxOutputTokens: 900, responseMimeType: 'application/json' },
   };
   const ctl = new AbortController();
@@ -12041,14 +12116,15 @@ async function aiReadForm(blob){
   } finally { clearTimeout(timer); }
 }
 /* AI first when a key is set, Tesseract as the offline fallback. */
-async function readPaper(blob){
+async function readPaper(blobOrList){
+  const blobs = Array.isArray(blobOrList) ? blobOrList : [blobOrList];
   const line = document.getElementById('ocrScanline');
   if (line) line.classList.remove('hidden');
   try {
     if (aiAvailable()) {
       setOcrStatus('🔎 ' + t('aiReading'));
       try {
-        const parsed = await aiReadForm(blob);
+        const parsed = await aiReadForm(blobs);
         const got = ['owner','nid','phone','addr'].filter(k => parsed[k]).length;
         fillFormFromOcr('paper', parsed);
         if (got >= 2) {
@@ -12066,7 +12142,7 @@ async function readPaper(blob){
         toast('🔎 ' + t(k), 'warn');
       }
     }
-    await runOcrOn(blob);
+    await runOcrOn(blobs[0]);
   } finally { if (line) line.classList.add('hidden'); }
 }
 /* Handwritten Bangla sample — the case Tesseract cannot handle, Gemini can. */
