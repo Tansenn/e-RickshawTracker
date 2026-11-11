@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<title>ই-রিকশা ট্র্যাকার — Rickshaw Registration Form</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #e8ecef; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #111827;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .bn { font-family: 'Nirmala UI', 'Noto Sans Bengali', 'Kalpurush', sans-serif; }
+  .sheet {
+    width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff;
+    padding: 8mm 13mm 7mm; position: relative;
+  }
+  @media print { html, body { background: #fff; } .sheet { margin: 0; } }
+
+  /* header */
+  .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8mm; }
+  .head img { width: 42mm; height: auto; display: block; }
+  .formno { text-align: right; font-size: 9.5pt; color: #374151; line-height: 1.8; }
+  .formno b { color: #065f46; }
+  .rule { height: 2.6pt; background: linear-gradient(90deg, #065f46, #10b981); margin: 3mm 0 2.5mm; border-radius: 2pt; }
+
+  .title { text-align: center; }
+  .title .bn { font-size: 18.5pt; font-weight: 700; letter-spacing: .2pt; }
+  .title .en { font-size: 10.5pt; font-weight: 600; color: #065f46; letter-spacing: 1.4pt; text-transform: uppercase; }
+  .title .org { font-size: 8.5pt; color: #6b7280; margin-top: 1mm; }
+
+  .hint {
+    margin: 2mm 0 0; font-size: 8.3pt; color: #374151; text-align: center;
+    background: #f0fdf4; border: .6pt solid #a7f3d0; border-radius: 3pt; padding: 1.2mm 3mm;
+  }
+
+  /* sections */
+  .sec { margin-top: 3.6mm; border: .8pt solid #d1d5db; border-radius: 3pt; overflow: hidden; }
+  .sec > h2 {
+    margin: 0; padding: 1.8mm 3mm; background: #065f46; color: #fff;
+    font-size: 10pt; font-weight: 600; display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .sec > h2 .en { font-size: 8pt; font-weight: 500; color: #d1fae5; letter-spacing: .6pt; text-transform: uppercase; }
+  .sec .body { padding: 2.4mm 2.8mm; }
+
+  .grid { display: flex; gap: 5mm; }
+  .col { flex: 1; min-width: 0; }
+
+  .field { margin-bottom: 2mm; }
+  .field:last-child { margin-bottom: 0; }
+  .field > label { display: block; font-size: 8.3pt; color: #374151; margin-bottom: 1mm; }
+  .field > label .en { color: #9ca3af; font-size: 7.4pt; letter-spacing: .3pt; text-transform: uppercase; margin-left: 1.2mm; }
+  .line { border-bottom: .9pt solid #6b7280; height: 4mm; }
+  .line.tall { height: 9mm; }
+  .boxed { border: .8pt solid #9ca3af; border-radius: 2pt; height: 5.4mm; }
+
+  .checks { display: flex; flex-wrap: wrap; gap: 2mm 5mm; padding-top: .6mm; }
+  .chk { display: flex; align-items: center; gap: 1.6mm; font-size: 9pt; color: #1f2937; }
+  .chk i { width: 3.6mm; height: 3.6mm; border: .9pt solid #374151; border-radius: .8pt; display: inline-block; }
+  .chk .bn { font-size: 9.4pt; }
+  .chk small { color: #6b7280; font-size: 7.6pt; }
+
+  /* attachments */
+  .attach { display: flex; gap: 5mm; }
+  .dashed {
+    flex: 1; border: .9pt dashed #9ca3af; border-radius: 2pt; height: 19mm;
+    display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 8.2pt; text-align: center;
+  }
+  .decl { font-size: 8pt; color: #374151; line-height: 1.5; margin-top: 2.6mm; }
+  .sign { display: flex; justify-content: space-between; gap: 10mm; margin-top: 4mm; }
+  .sign div { flex: 1; text-align: center; font-size: 8.2pt; color: #4b5563; }
+  .sign span { display: block; border-top: .8pt solid #6b7280; margin-top: 6.5mm; padding-top: 1.2mm; }
+
+  /* office use */
+  .office { margin-top: 3.6mm; border: .9pt solid #065f46; border-radius: 3pt; }
+  .office h2 { margin: 0; background: #ecfdf5; color: #065f46; font-size: 8.6pt; font-weight: 700; padding: 1.5mm 3mm; display: flex; justify-content: space-between; }
+  .office h2 .en { font-weight: 600; letter-spacing: .5pt; text-transform: uppercase; font-size: 7.4pt; }
+  .office .body { display: flex; gap: 5mm; padding: 2mm 2.6mm; }
+  .office .grow { flex: 1; }
+  .qr {
+    width: 19mm; height: 19mm; border: .8pt dashed #6b7280; border-radius: 2pt;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-size: 6.8pt; color: #6b7280; line-height: 1.5;
+  }
+
+  .foot { position: absolute; left: 13mm; right: 13mm; bottom: 4mm; display: flex; justify-content: space-between; font-size: 7.2pt; color: #9ca3af; border-top: .5pt solid #e5e7eb; padding-top: 1.6mm; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="head">
+    <div style="font-weight:800; font-size:16pt; color:#006a4e;">ই-রিকশা ট্র্যাকার<div style="font-size:9pt; font-weight:600; color:#333;">E-Rickshaw Tracker</div></div>
+    <div class="formno">
+      ফরম নং / Form No: <b>DHA-PAPER-2211</b><br>
+      তারিখ / Date: ____________________
+    </div>
+  </div>
+  <div class="rule"></div>
+
+  <div class="title">
+    <div class="bn">জাতীয় রিকশা নিবন্ধন ফরম</div>
+    <div class="en">National Rickshaw Registration Form</div>
+    <div class="org">ই-রিকশা ট্র্যাকার · ঢাকা, বাংলাদেশ 🇧🇩</div>
+  </div>
+
+  <p class="hint bn">ছাপা বা হাতের লেখায় পূরণ করুন — বাংলা বা ইংরেজি। সংখ্যা বাংলা (০–৯) বা ইংরেজি (0–9) দুই ভাবেই লেখা যাবে। নীল বা কালো কালি ব্যবহার করুন।</p>
+
+  <div class="sec">
+    <h2><span class="bn">১. মালিকের তথ্য</span><span class="en">Owner details</span></h2>
+    <div class="body">
+      <div class="grid">
+        <div class="col">
+          <div class="field">
+            <label class="bn">মালিকের নাম (ইংরেজিতে)<span class="en">Owner name</span></label>
+            <div class="line"></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="field">
+            <label class="bn">মালিকের নাম (বাংলায়)<span class="en">Name in Bangla</span></label>
+            <div class="line"></div>
+          </div>
+        </div>
+      </div>
+      <div class="grid" style="margin-top:2.4mm">
+        <div class="col">
+          <div class="field">
+            <label class="bn">জাতীয় পরিচয়পত্র নম্বর<span class="en">NID No.</span></label>
+            <div class="line"></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="field">
+            <label class="bn">মোবাইল নম্বর<span class="en">Mobile</span></label>
+            <div class="line"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:2.4mm">
+        <label class="bn">বর্তমান ঠিকানা<span class="en">Present address</span></label>
+        <div class="line"></div>
+        <div class="line" style="margin-top:3mm"></div>
+      </div>
+      <div class="field" style="margin-top:2.4mm">
+        <label class="bn">স্থায়ী ঠিকানা<span class="en">Permanent address</span></label>
+        <div class="line"></div>
+        <div class="line" style="margin-top:3mm"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="bn">২. যানবাহনের তথ্য</span><span class="en">Vehicle details</span></h2>
+    <div class="body">
+      <div class="field">
+        <label class="bn">এলাকা / জোন<span class="en">Zone</span></label>
+        <div class="checks">
+          <span class="chk"><i></i><span class="bn">উত্তরা</span><small>Uttara</small></span>
+          <span class="chk"><i></i><span class="bn">মিরপুর</span><small>Mirpur</small></span>
+          <span class="chk"><i></i><span class="bn">ধানমন্ডি</span><small>Dhanmondi</small></span>
+          <span class="chk"><i></i><span class="bn">গুলশান / বনানী</span><small>Gulshan/Banani</small></span>
+          <span class="chk"><i></i><span class="bn">মতিঝিল</span><small>Motijheel</small></span>
+          <span class="chk"><i></i><span class="bn">পুরান ঢাকা</span><small>Old Dhaka</small></span>
+        </div>
+      </div>
+      <div class="grid" style="margin-top:3.4mm">
+        <div class="col">
+          <div class="field">
+            <label class="bn">যাত্রী ধারণক্ষমতা<span class="en">Passenger capacity</span></label>
+            <div class="line" style="width:32mm"></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="field">
+            <label class="bn">যানবাহনের ধরন<span class="en">Vehicle type</span></label>
+            <div class="checks" style="padding-top:2mm">
+              <span class="chk"><i></i><span class="bn">অটোরিকশা</span><small>AutoRickshaw</small></span>
+              <span class="chk"><i></i><span class="bn">ইলেকট্রিক অটোরিকশা</span><small>Electric</small></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="bn">৩. সংযুক্তি ও ঘোষণা</span><span class="en">Attachments &amp; declaration</span></h2>
+    <div class="body">
+      <div class="attach">
+        <div class="dashed bn">এনআইডি কার্ডের ফটোকপি<br>NID copy</div>
+        <div class="dashed bn">মালিকের ছবি<br>Photo</div>
+      </div>
+      <p class="decl bn">আমি ঘোষণা করছি যে, উপরের তথ্যগুলো সঠিক ও সম্পূর্ণ। ভুল বা অসত্য তথ্য দেওয়া হলে নিবন্ধন বাতিল হতে পারে এবং আইনানুগ ব্যবস্থা নেওয়া যেতে পারে।</p>
+      <div class="sign">
+        <div><span class="bn">তারিখ / Date</span></div>
+        <div><span class="bn">মালিকের স্বাক্ষর / টিপসই<br>Signature / thumbprint</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="office">
+    <h2><span class="bn">অফিসের ব্যবহারের জন্য</span><span class="en">For office use only</span></h2>
+    <div class="body">
+      <div class="grow">
+        <div class="field">
+          <label class="bn">নিবন্ধন নম্বর<span class="en">Registration No.</span></label>
+          <div class="line">DHA-RK-</div>
+        </div>
+        <div class="grid" style="margin-top:3mm">
+          <div class="col">
+            <div class="field">
+              <label class="bn">যাচাইকারী<span class="en">Verified by</span></label>
+              <div class="line"></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="field">
+              <label class="bn">কেন্দ্র<span class="en">Station</span></label>
+              <div class="line"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="qr bn">QR স্টিকার<br>QR sticker</div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>ই-রিকশা ট্র্যাকার · Rickshaw Registration Form</span>
+    <span>ডেমো ফরম / Demo form · v1</span>
+  </div>
+
+</div>
+</body>
+</html>
