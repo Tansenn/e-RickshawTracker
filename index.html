@@ -12529,7 +12529,7 @@ function applyLangStatic(){ document.documentElement.lang = lang; document.query
 applyTheme();
 const bootMatch = location.hash.match(/#v=(DHA-RK-\d+)/i) || location.search.match(/[?&]v=(DHA-RK-\d+)/i);
 if (bootMatch) { role = 'all'; enterApp(); }
-else { applyLangStatic(); renderBadge(); if (currentUser()) goHome(); }
+else { applyLangStatic(); renderBadge(); }
 </script>
 </body>
 </html>
