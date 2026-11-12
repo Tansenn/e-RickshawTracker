@@ -11287,7 +11287,14 @@ function showHome(){
   applyLangStatic();
 }
 function showAdmin(){ hideAllTop(); document.getElementById('adminScreen').classList.remove('hidden'); document.body.classList.add('wm-on'); applyLangStatic(); }
-function goHome(){ currentUser() ? showHome() : showLanding(); }
+function goHome(){
+  try {
+    sessionStorage.removeItem('rtCurrentView');
+    history.replaceState(null, '', location.pathname);
+  } catch(e) {}
+
+  showLanding();
+}
 function enterFlow(){ currentUser() ? showHome() : showAuth(); }
 function showRoles(){ currentUser() ? showHome() : showAuth(); } /* back-compat shim for old onclick handlers */
 
@@ -11334,7 +11341,15 @@ function doSignup(){
   toast('✅ ' + t('authWelcome'), 'success');
   showHome();
 }
-function doLogout(){ clearCurrentUser(); showAuth(); }
+function doLogout(){
+  clearCurrentUser();
+
+  try {
+    sessionStorage.removeItem('rtCurrentView');
+  } catch(e) {}
+
+  showAuth();
+}
 
 /* ================= THEME ================= */
 let theme = storeGet('rtTheme') || 'light';
@@ -11373,11 +11388,26 @@ function syncNavActive(){
   document.querySelectorAll('#bottomNav button').forEach(b => b.classList.toggle('active', b.dataset.view === active));
 }
 function showView(view){
-  document.querySelectorAll('.navbtn[data-view]').forEach(x => x.classList.toggle('active', x.dataset.view === view));
-  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+
+  // Remember the current page for browser reload
+  try {
+    sessionStorage.setItem('rtCurrentView', view);
+  } catch(e) {}
+
+  document.querySelectorAll('.navbtn[data-view]').forEach(x =>
+    x.classList.toggle('active', x.dataset.view === view)
+  );
+
+  document.querySelectorAll('.view').forEach(v =>
+    v.classList.add('hidden')
+  );
+
   const el = document.getElementById('view-' + view);
+
   if (el) el.classList.remove('hidden');
+
   if (view === 'map') buildMap();
+
   syncNavActive();
 }
 function go(view){ showView(view); }
@@ -11385,11 +11415,46 @@ document.querySelectorAll('.navbtn[data-view]').forEach(b => b.addEventListener(
 function enterApp(){
   hideAllTop();
   document.getElementById('app').classList.remove('hidden');
+
   applyRole();
   renderAll();
-  const m = location.hash.match(/#v=(DHA-RK-\d+)/i) || location.search.match(/[?&]v=(DHA-RK-\d+)/i);
-  if (m) openProfile(m[1].toUpperCase());
-  else if (!storeGet('rtOnboarded')) startOnboard();
+
+  const m =
+    location.hash.match(/#v=(DHA-RK-\d+)/i) ||
+    location.search.match(/[?&]v=(DHA-RK-\d+)/i);
+
+  if (m) {
+    openProfile(m[1].toUpperCase());
+    return;
+  }
+
+  // Restore the page that was open before reloading.
+  let savedView = null;
+  let savedTab = null;
+
+  try {
+    savedView = sessionStorage.getItem('rtCurrentView');
+    savedTab = sessionStorage.getItem('rtRegTab');
+  } catch(e) {}
+
+  const allowed = ROLE_VIEWS[role];
+
+  if (
+    savedView &&
+    document.getElementById('view-' + savedView) &&
+    (!allowed || allowed.includes(savedView))
+  ) {
+    showView(savedView);
+  }
+
+  // Restore the selected registration tab.
+  if (savedView === 'register' && ['online', 'paper', 'agent'].includes(savedTab)) {
+    switchRegTab(savedTab);
+  }
+
+  if (!storeGet('rtOnboarded')) {
+    startOnboard();
+  }
 }
 function resetDemo(){
   if (!confirm(lang === 'bn' ? 'সব ডেমো ডেটা রিসেট করবেন?' : 'Reset all demo data to defaults?')) return;
@@ -11625,7 +11690,19 @@ function formHTML(suffix){
 }
 function renderForms(){ ['online','paper','agent'].forEach(s => { const el = document.getElementById('form-' + s); if (el) el.innerHTML = formHTML(s); }); }
 renderForms();
-function switchRegTab(tb){ ['online','paper','agent'].forEach(x => document.getElementById('tab-' + x).classList.toggle('hidden', x !== tb)); document.querySelectorAll('.regtab').forEach(b => b.classList.toggle('active-tab', b.dataset.tab === tb)); }
+function switchRegTab(tb){
+  ['online','paper','agent'].forEach(x => {
+    document.getElementById('tab-' + x).classList.toggle('hidden', x !== tb);
+  });
+
+  document.querySelectorAll('.regtab').forEach(b =>
+    b.classList.toggle('active-tab', b.dataset.tab === tb)
+  );
+
+  try {
+    sessionStorage.setItem('rtRegTab', tb);
+  } catch(e) {}
+}
 function syncAddr(s, cb){
   const a = document.getElementById('addr-' + s), p = document.getElementById('perm-' + s);
   if (cb.checked) { p.value = a.value; p.disabled = true; } else p.disabled = false;
@@ -12650,11 +12727,39 @@ function renderAll(){
   renderDashboard(); renderPolice(); renderCharging(); renderNotifs(); renderFleetList(); renderForms(); aiBadge();
 }
 function applyLangStatic(){ document.documentElement.lang = lang; document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); }); document.querySelectorAll('.lang-label').forEach(el => { el.textContent = lang === 'en' ? '🌐 বাংলা' : '🌐 English'; }); }
-/* Boot: a QR link (?v=DHA-RK-0001) opens the vehicle page directly. */
+/* Boot: restore the current page after browser reload. */
 applyTheme();
-const bootMatch = location.hash.match(/#v=(DHA-RK-\d+)/i) || location.search.match(/[?&]v=(DHA-RK-\d+)/i);
-if (bootMatch) { role = 'all'; enterApp(); }
-else { applyLangStatic(); renderBadge(); }
+
+const bootMatch =
+  location.hash.match(/#v=(DHA-RK-\d+)/i) ||
+  location.search.match(/[?&]v=(DHA-RK-\d+)/i);
+
+const savedView = (() => {
+  try {
+    return sessionStorage.getItem('rtCurrentView');
+  } catch(e) {
+    return null;
+  }
+})();
+
+if (bootMatch) {
+
+  // QR verification links work exactly as before
+  role = 'all';
+  enterApp();
+
+} else if (savedView) {
+
+  // Restore the previously opened application page
+  enterApp();
+
+} else {
+
+  // Normal first-time landing page
+  applyLangStatic();
+  renderBadge();
+
+}
 </script>
 </body>
 </html>
